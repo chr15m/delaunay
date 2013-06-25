@@ -1,39 +1,54 @@
 <!DOCTYPE html>
 <html>
-  <head>
-  </head>
+	<head>
+		<script type="text/javascript" src="delaunay.js"></script>
+		<script type="text/javascript">
+		function test_delaunay() {
+			// function to graph it on a canvas
+			DelaunayTriangle.prototype.draw = function(ctx) {
+				ctx.beginPath();
+				ctx.moveTo(this.a.x, this.a.y);
+				ctx.lineTo(this.b.x, this.b.y);
+				ctx.lineTo(this.c.x, this.c.y);
+				ctx.closePath();
+				ctx.stroke();
+			}
+			
+			// set up the test canvas
+			var canvas = document.getElementById("canvas"),
+					ctx = canvas.getContext("2d"),
+					i = 2048,
+					vertices = new Array(i),
+					x, y;
+			
+			// create a bunch of random points in a circle
+			while(i) {
+				do {
+					x = Math.random() - 0.5;
+					y = Math.random() - 0.5;
+				} while(x * x + y * y > 0.25);
+				
+				x = (x * 0.96875 + 0.5) * canvas.width;
+				y = (y * 0.96875 + 0.5) * canvas.height;
+				
+				vertices[--i] = {x: x, y: y, id: i};
+			}
+			
+			// do the actual triangulation to create a mesh
+			console.time("triangulate");
+			var triangles = delaunay_triangulate(vertices);
+			console.timeEnd("triangulate");
+			
+			// now draw them all
+			i = triangles.length;
+			while(i) {
+				triangles[--i].draw(ctx);
+			}
+		}
+		</script>
+	</head>
 
-  <body>
-    <canvas id="canvas" width="1024" height="1024">
-    </canvas>
-
-    <script type="text/javascript" src="delaunay.js"></script>
-    <script type="text/javascript">
-      var canvas = document.getElementById("canvas"),
-          ctx = canvas.getContext("2d"),
-          i = 2048,
-          vertices = new Array(i),
-          x, y
-
-      while(i) {
-        do {
-          x = Math.random() - 0.5
-          y = Math.random() - 0.5
-        } while(x * x + y * y > 0.25)
-
-        x = (x * 0.96875 + 0.5) * canvas.width
-        y = (y * 0.96875 + 0.5) * canvas.height
-
-        vertices[--i] = {x: x, y: y}
-      }
-
-      console.time("triangulate")
-      var triangles = triangulate(vertices)
-      console.timeEnd("triangulate")
-
-      i = triangles.length
-      while(i)
-        triangles[--i].draw(ctx)
-    </script>
-  </body>
+	<body onload="test_delaunay();">
+		<canvas id="canvas" width="1024" height="1024"></canvas>
+	</body>
 </html>
