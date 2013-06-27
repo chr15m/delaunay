@@ -4,22 +4,12 @@
 		<script type="text/javascript" src="delaunay.js"></script>
 		<script type="text/javascript">
 		function test_delaunay() {
-			// function to graph it on a canvas
-			DelaunayTriangle.prototype.draw = function(ctx) {
-				ctx.beginPath();
-				ctx.moveTo(this.a.x, this.a.y);
-				ctx.lineTo(this.b.x, this.b.y);
-				ctx.lineTo(this.c.x, this.c.y);
-				ctx.closePath();
-				ctx.stroke();
-			}
-			
 			// set up the test canvas
 			var canvas = document.getElementById("canvas"),
-					ctx = canvas.getContext("2d"),
-					i = 2048,
-					vertices = new Array(i),
-					x, y;
+				ctx = canvas.getContext("2d"),
+				i = 512,
+				vertices = new Array(i),
+				x, y;
 			
 			// create a bunch of random points in a circle
 			while(i) {
@@ -34,21 +24,60 @@
 				vertices[--i] = {x: x, y: y, id: i};
 			}
 			
+			// create some random constraint edges
+			var edges = [];
+			for (var i=0; i<2; i++) {
+				edges.push([
+					vertices[Math.floor(Math.random() * vertices.length)],
+					vertices[Math.floor(Math.random() * vertices.length)]
+				]);
+			}
+			
+			// start timing
+			console.time("both");
+			
 			// do the actual triangulation to create a mesh
 			console.time("triangulate");
 			var triangles = delaunay_triangulate(vertices);
 			console.timeEnd("triangulate");
 			
-			// now draw them all
+			// constrain the triangulation to our new edges
+			console.time("constrain");
+			var triangles = delaunay_constrain(vertices, edges, triangles);
+			console.timeEnd("constrain");
+			
+			// done timing
+			console.timeEnd("both");
+			
+			// now draw the triangles
 			i = triangles.length;
 			while(i) {
-				triangles[--i].draw(ctx);
+				var tri = triangles[--i];
+				ctx.beginPath();
+				ctx.moveTo(tri.a.x, tri.a.y);
+				ctx.lineTo(tri.b.x, tri.b.y);
+				ctx.lineTo(tri.c.x, tri.c.y);
+				ctx.closePath();
+				ctx.stroke();
+			}
+			
+			// now draw the constraint edge lines
+			i = edges.length;
+			while(i) {
+				var edge = edges[--i];
+				ctx.strokeStyle = "rgb(255,0,0)";
+				ctx.lineWidth = 3;
+				ctx.beginPath();
+				ctx.moveTo(edge[0].x, edge[0].y);
+				ctx.lineTo(edge[1].x, edge[1].y);
+				ctx.closePath();
+				ctx.stroke();
 			}
 		}
 		</script>
 	</head>
 
 	<body onload="test_delaunay();">
-		<canvas id="canvas" width="1024" height="1024"></canvas>
+		<canvas id="canvas" width="500" height="500" style="margin-left: auto; margin-right: auto; display: block;"></canvas>
 	</body>
 </html>

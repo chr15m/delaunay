@@ -1,3 +1,5 @@
+var pointnames = ["a", "b", "c"];
+
 function DelaunayTriangle(a, b, c) {
 	this.a = a;
 	this.b = b;
@@ -31,6 +33,15 @@ function DelaunayTriangle(a, b, c) {
 		dx = this.x - a.x;
 		dy = this.y - a.y;
 		this.r = dx * dx + dy * dy;
+	}
+	
+	// add this triangle to a reference list kept by each point
+	for (var p=0; p<pointnames.length; p++) {
+		var v = this[pointnames[p]];
+		if (!v["delaunay_triangles"]) {
+			v["delaunay_triangles"] = [];
+		}
+		v["delaunay_triangles"].push(this);
 	}
 }
 
@@ -154,14 +165,36 @@ function delaunay_triangulate(vertices) {
 	i = closed.length;
 	while(i--) {
 		if(closed[i].a.__sentinel ||
-			 closed[i].b.__sentinel ||
-			 closed[i].c.__sentinel) {
+			closed[i].b.__sentinel ||
+			closed[i].c.__sentinel) {
 			closed.splice(i, 1);
 		}
 	}
 
 	/* Yay, we're done! */
 	return closed;
+}
+
+function delaunay_constrain(vertices, edges, triangles) {
+	if (!triangles) {
+		triangles = delaunay_triangulate(vertices);
+	}
+	for (var e=0; e<edges.length; e++) {
+		for (var p=0; p<edges[e].length; p++) {
+			var pt = edges[e][p];
+			for (var t=0; t<pt.delaunay_triangles.length; t++) {
+				var tri = pt.delaunay_triangles[t];
+				var pos = triangles.indexOf(tri);
+				if (pos != -1) {
+					triangles.splice(pos, 1);
+				}
+			}
+		}
+	}
+	console.log(vertices);
+	console.log(edges);
+	console.log(triangles);
+	return triangles;
 }
 
 if (typeof module !== 'undefined') {
