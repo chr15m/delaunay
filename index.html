@@ -53,6 +53,13 @@
 			i = triangles.length;
 			while(i) {
 				var tri = triangles[--i];
+				if (tri.edge_conflict) {
+					ctx.strokeStyle = "#f00"
+					ctx.lineWidth = 2;
+				} else {
+					ctx.strokeStyle = "#000"
+					ctx.lineWidth = 1;
+				}
 				ctx.beginPath();
 				ctx.moveTo(tri.a.x, tri.a.y);
 				ctx.lineTo(tri.b.x, tri.b.y);
