@@ -7,7 +7,7 @@
 			// set up the test canvas
 			var canvas = document.getElementById("canvas"),
 				ctx = canvas.getContext("2d"),
-				i = 512,
+				i = 100,
 				vertices = new Array(i),
 				x, y;
 			
@@ -25,8 +25,9 @@
 			}
 			
 			// create some random constraint edges
+			var NUM_EDGES = 2;
 			var edges = [];
-			for (var i=0; i<2; i++) {
+			for (var i=0; i<NUM_EDGES; i++) {
 				edges.push([
 					vertices[Math.floor(Math.random() * vertices.length)],
 					vertices[Math.floor(Math.random() * vertices.length)]
@@ -72,19 +73,31 @@
 			// now draw the triangles
 			i = triangles.length;
 			while(i) {
+				ctx.beginPath();
 				var tri = triangles[--i];
+				ctx.strokeStyle = "#000"
+				ctx.lineWidth = 1;
+				ctx.fillStyle = "rgba(33,33,33,0.2)"
 				if (tri.edge_conflict) {
 					ctx.strokeStyle = "#f00"
 					ctx.lineWidth = 2;
-				} else {
+				}
+				if (tri.added) {
+					//ctx.strokeStyle = "#0f0"
+					//ctx.lineWidth = 1;
 					ctx.strokeStyle = "#000"
 					ctx.lineWidth = 1;
+					// ctx.arc(tri.x, tri.y, Math.sqrt(tri.r), 0, Math.PI * 2);
+					ctx.fillStyle = "rgba(200,33,33,0.2)"
 				}
-				ctx.beginPath();
+				if (tri.forced) {
+					ctx.fillStyle = "rgba(33,200,33,0.2)"
+				}
 				ctx.moveTo(tri.a.x, tri.a.y);
 				ctx.lineTo(tri.b.x, tri.b.y);
 				ctx.lineTo(tri.c.x, tri.c.y);
 				ctx.closePath();
+				ctx.fill();
 				ctx.stroke();
 			}
 			
@@ -94,7 +107,7 @@
 				var edge = edges[--i];
 				// draw the edge lines in red
 				ctx.strokeStyle = "rgb(255,0,0)";
-				ctx.lineWidth = 3;
+				ctx.lineWidth = 2;
 				ctx.beginPath();
 				ctx.moveTo(edge[0].x, edge[0].y);
 				ctx.lineTo(edge[1].x, edge[1].y);
@@ -103,21 +116,35 @@
 				// draw the start of the edge
 				ctx.lineWidth = 1;
 				ctx.beginPath();
-				ctx.arc(edge[1].x, edge[1].y, 10, 0, Math.PI * 2);
+				ctx.arc(edge[1].x, edge[1].y, 5, 0, Math.PI * 2);
 				ctx.closePath();
 				ctx.stroke();
 				// draw the end of the edge
 				ctx.strokeStyle = "rgb(0,255,0)";
 				ctx.beginPath();
-				ctx.arc(edge[0].x, edge[0].y, 10, 0, Math.PI * 2);
+				ctx.arc(edge[0].x, edge[0].y, 5, 0, Math.PI * 2);
 				ctx.closePath();				
 				ctx.stroke();
+			}
+			
+			// now draw poly points
+			ctx.fillStyle = "#000"
+			for (var p=0; p<vertices.length; p++) {
+				if (vertices[p]["is_poly"]) {
+					ctx.lineWidth = 1;
+					ctx.strokeStyle = vertices[p]["poly_l"] ? "rgb(0,0,255)" : "rgb(0,255,0)";
+					ctx.beginPath();
+					ctx.arc(vertices[p].x, vertices[p].y + (vertices[p]["poly_l"] ? 2 : -2), 10, 0, Math.PI * 2);
+					ctx.fillText(vertices[p]["poly_l"] || vertices[p]["poly_u"], vertices[p].x + 10, vertices[p].y);
+					ctx.closePath();				
+					ctx.stroke();
+				};
 			}
 		}
 		</script>
 	</head>
 
 	<body onload="test_delaunay();">
-		<canvas id="canvas" width="500" height="500" style="margin-left: auto; margin-right: auto; display: block;"></canvas>
+		<canvas id="canvas" width="800" height="800" style="margin-left: auto; margin-right: auto; display: block;"></canvas>
 	</body>
 </html>

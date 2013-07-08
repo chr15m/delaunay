@@ -237,7 +237,7 @@ function opposed_triangle(edge_map, triangle, vertex) {
 		var ptn = triangle[pointnames[(p + 1) % pointnames.length]];
 		// if vertex is not in the edge formed by point and point + 1 (opposing edge)
 		if (vertex != pt && vertex != ptn) {
-			console.log("opposing:", vertex, pt, ptn);
+			// console.log("opposing:", vertex, pt, ptn);
 			// loop through the triangles of the edge
 			var edge_triangles = edge_map[edge_reference(pt,ptn)];
 			for (var e=0; e<edge_triangles.length; e++) {
@@ -260,23 +260,51 @@ function opposed_triangle(edge_map, triangle, vertex) {
 }
 
 // turn a list of points back into triangles
-function triangulate_polygon(poly, edge, triangles) {
 //Procedure TriangulatePseudoPolygon (P:VertexList, ab:Edge, T:CDT)
+function triangulate_polygon(poly, edge, triangles) {
+	//console.log("triangulate_polygon", poly, edge);
+	// var new_triangles = [];
+	var a = edge[0];
+	var b = edge[1];
+	var c = 0;
+	var use_tri = null;
 	//If P has more than one element then
+	if (poly.length > 1) {
 		// c:=First vertex of P
 		// For each vertex v in P do
+		for (var v=0; v<poly.length; v++) {	
 			// If v ∈ CircumCircle (a, b, c) then
+			var new_tri = new DelaunayTriangle(a, b, poly[c]);
+			if (Math.pow(_delaunay_distance(poly[v], new_tri), 2) < new_tri.r) {
 				//c:=v
+				c = v;
+				use_tri = new DelaunayTriangle(a, b, poly[c]);
+			}
 			//EndIf
+		}
 		//EndFor
 		//Divide P into PE and PD giving P=PE +c+PD
+		var poly_e = poly.slice(0, c);
+		var poly_d = poly.slice(c + 1);
 		//TriangulatePseudoPolygon(PE , ac, T)
+		triangulate_polygon(poly_e, [a, poly[c]], triangles);
 		//TriangulatePseudoPolygon(PD , cd, T)
+		triangulate_polygon(poly_d, [poly[c], b], triangles);
+	} else if (poly.length) {
+		use_tri = new DelaunayTriangle(a, b, poly[c]);
+	}
 	// EndIf
 	//If P is not empty then
-		//Add triangle with vertices a, b, c into T
+	if (use_tri) {
+		// Add triangle with vertices a, b, c into T
+		triangles.push(use_tri);
+	} else if (poly.length) {
+		var force_tri = new DelaunayTriangle(a, b, poly[c]);
+		force_tri.forced = true;
+		triangles.push(force_tri);
+	}
 	//EndIf
-//EndProc
+	return triangles;
 }
 
 // see if a vertex is a member of the triangle's points
@@ -288,7 +316,7 @@ function vertex_in_triangle(v, t) {
 	}
 }
 
-// check if two lines made up of points p1->p2 and p3->p4 intersect eachother
+// check if two lines mad up of points p1->p2 and p3->p4 intersect eachother
 function lines_intersect(p1, p2, p3, p4) {
 	var x=((p1.x*p2.y-p1.y*p2.x)*(p3.x-p4.x)-(p1.x-p2.x)*(p3.x*p4.y-p3.y*p4.x))/((p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x));
 	var y=((p1.x*p2.y-p1.y*p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x*p4.y-p3.y*p4.x))/((p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x));
@@ -336,7 +364,7 @@ function get_point_in_line_on_side(edge, line, ls) {
 
 // get the distance between two vertices
 function _delaunay_distance(v1, v2) {
-	return Math.sqrt(Math.pow(v2.x - v1.x, 2) + Math.pow(v2.y - v1.y), 2);
+	return Math.sqrt(Math.pow(v2.x - v1.x, 2) + Math.pow(v2.y - v1.y, 2));
 }
 
 /****************************************
@@ -398,16 +426,23 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 	}
 	// make a map of points to triangles
 	make_point_map(triangles);
-	// list of triangles we want to remove from the CDT
-	remove_triangles = [];	
-
+	
 	// loop through the edge constraints we were passed
 	for (var e=0; e<constrained_edges.length; e++) {
-		// TODO: check if the line we are looking for is already and edge in our CDT?
+		// list of triangles we want to remove from the CDT
+		remove_triangles = [];
+		// list of triangles we want ot add to the CDT
+		new_triangles = [];
+		
 		// refresh the edge map
 		var edge_map = make_edge_map(triangles);
 		// the current edge (two points)
 		var edge = constrained_edges[e];
+		
+		// if this edge is already part of our CDT then leave it in there
+		if (edge_map[edge_reference(edge[0], edge[1])]) {
+			break;
+		}
 		
 		// check the edge is valid
 		if (_delaunay_distance(edge[0], edge[1]) == 0) {
@@ -439,39 +474,54 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 		var v = edge[0];
 		
 		// main part of the algorithm
-		var count = 100;
 		// t can sometimes be null at start with a short edge that already exists
-		while (t && !vertex_in_triangle(edge[1], t) && count) {
-			count--;
+		while (t && !vertex_in_triangle(edge[1], t)) {
 			t.edge_conflict = true;
 			var opposed = opposed_triangle(edge_map, t, v);
-			console.log(opposed);
+			//console.log(opposed);
+			// first time through, add the initial points to the polygons
+			if (poly_u.length == 0 && poly_l.length == 0) {
+				for (var es=0; es<opposed.e.length; es++) {
+					var ov = opposed.e[es];
+					var ls = line_side(edge, ov);
+					if (ls < 0) {
+						poly_u.push(ov);
+						ov.poly_u = poly_u.length;
+					} else if (ls > 0) {
+						poly_l.push(ov);
+						ov.poly_l = poly_l.length;
+					}
+					ov.is_poly = true;
+				}
+			}
 			var t_seq = opposed.t;
 			var v_seq = opposed.v;
 			var ls = line_side(edge, v_seq);
-			console.log(ls, edge[1], v_seq);
+			// console.log(ls, edge[1], v_seq);
 			//If vseq above the edge ab then
-			if (ls < 0) {
-				// AddList(PU, vseq)
-				poly_u.push(v_seq);
-				// v:=Vertex shared by t and tseq above ab
-				v = get_point_in_line_on_side(opposed.e, edge, ls);
-			//Else If vseq below the edge ab
-			} else if (ls > 0) {
-				// AddList(PL, vseq)
-				poly_l.push(v_seq);
-				// v:=Vertex shared by t and tseq below ab
-				v = get_point_in_line_on_side(opposed.e, edge, ls);
-			//Else vseq on the edge ab
-			} else {
-				if (edge[1] != v_seq) {
+			if (edge[1] != v_seq) {
+				if (ls < 0) {
+					// AddList(PU, vseq)
+					poly_u.push(v_seq);
+					v_seq.poly_u = poly_u.length;
+					// v:=Vertex shared by t and tseq above ab
+					v = get_point_in_line_on_side(opposed.e, edge, ls);
+				//Else If vseq below the edge ab
+				} else if (ls > 0) {
+					// AddList(PL, vseq)
+					poly_l.push(v_seq);
+					v_seq.poly_l = poly_l.length;
+					// v:=Vertex shared by t and tseq below ab
+					v = get_point_in_line_on_side(opposed.e, edge, ls);
+				//Else vseq on the edge ab
+				} else {
 					// should never get here as all edges with points in them should have been split previously
 					throw new DelaunayException("Point found inside an edge.", {"edge": edge, "point": v_seq});
 					// InsertEdgeCDT(T, vseq b)
 					// a:=vseq
 					// break
-					
 				}
+				v_seq.is_poly = true;
 			}
 			//EndIf
 			//Remove t from CDT
@@ -482,33 +532,47 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 		// remove the last one we found
 		remove_triangles.push(t);
 		
-		if (!count) {
-			console.log("Edge removal algorithm overflow!");
+		triangulate_polygon(poly_u, edge, new_triangles);
+		triangulate_polygon(poly_l, edge, new_triangles);
+		
+		// remove all the triangles we got rid of
+		for (var t=0; t<remove_triangles.length; t++) {
+			var idx = triangles.indexOf(remove_triangles[t]);
+			if (idx >= 0) {
+				var triangle = triangles[idx];
+				for (var p=0; p<pointnames.length; p++) {
+					var pt = triangle[pointnames[p]];
+					var pidx = pt.delaunay_triangles.indexOf(triangle);
+					if (pidx >= 0) {
+						pt.delaunay_triangles.splice(pidx, 1);
+					}
+				}
+				triangles.splice(idx, 1);
+			}
 		}
 		
-		//triangluate_polygon(poly_u, edge, triangles);
-		//triangluate_polygon(poly_l, edge, triangles);
-	}
-	
-	// remove all the triangles we got rid of
-	for (var t=0; t<remove_triangles.length; t++) {
-		var idx = triangles.indexOf(remove_triangles[t]);
-		if (idx >= 0) {
-			var triangle = triangles[idx];
+		// add all the triangles we added
+		for (var t=0; t<new_triangles.length; t++) {
+			triangles.push(new_triangles[t]);
+			new_triangles[t].added = true;
 			for (var p=0; p<pointnames.length; p++) {
-				var pt = triangle[pointnames[p]];
-				var pidx = pt.delaunay_triangles.indexOf(triangle);
-				if (pidx >= 0) {
-					pt.delaunay_triangles.splice(pidx, 1);
+				var v = new_triangles[t][pointnames[p]];
+				// if there is no list yet for htis vertex then create one
+				if (!v["delaunay_triangles"]) {
+					v["delaunay_triangles"] = [];
+				}
+				// only add it if it is not yet in the list
+				if (v["delaunay_triangles"].indexOf(new_triangles[t]) == -1) {
+					v["delaunay_triangles"].push(new_triangles[t]);
 				}
 			}
-			triangles.splice(idx, 1);
 		}
+		
 	}
 	
-	console.log(vertices);
-	console.log(constrained_edges);
-	console.log(triangles);
+	//console.log(vertices);
+	//console.log(constrained_edges);
+	//console.log(triangles);
 	return triangles;
 }
 
