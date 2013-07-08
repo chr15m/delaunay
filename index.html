@@ -33,6 +33,21 @@
 				]);
 			}
 			
+			/*if (bad_data) {
+				edges = bad_data.edges;
+				for (var i=0; i<bad_data.vertices.length; i++) {
+					vertices[i] = {"x": bad_data.vertices[i].x, "y": bad_data.vertices[i].y};
+				}
+			}*/
+			
+			// log what we are working with
+			window.vertices = vertices;
+			window.edges = edges;
+			console.log("vertices:");
+			console.log(vertices);
+			console.log("edges:");
+			console.log(edges);
+			
 			// start timing
 			console.time("both");
 			
@@ -43,7 +58,12 @@
 			
 			// constrain the triangulation to our new edges
 			console.time("constrain");
-			var triangles = delaunay_constrain(vertices, edges, triangles);
+			try {
+				var triangles = delaunay_constrain(vertices, edges, triangles);
+			} catch (e) {
+				alert(e);
+				console.log(e);
+			}
 			console.timeEnd("constrain");
 			
 			// done timing
@@ -72,12 +92,25 @@
 			i = edges.length;
 			while(i) {
 				var edge = edges[--i];
+				// draw the edge lines in red
 				ctx.strokeStyle = "rgb(255,0,0)";
 				ctx.lineWidth = 3;
 				ctx.beginPath();
 				ctx.moveTo(edge[0].x, edge[0].y);
 				ctx.lineTo(edge[1].x, edge[1].y);
 				ctx.closePath();
+				ctx.stroke();
+				// draw the start of the edge
+				ctx.lineWidth = 1;
+				ctx.beginPath();
+				ctx.arc(edge[1].x, edge[1].y, 10, 0, Math.PI * 2);
+				ctx.closePath();
+				ctx.stroke();
+				// draw the end of the edge
+				ctx.strokeStyle = "rgb(0,255,0)";
+				ctx.beginPath();
+				ctx.arc(edge[0].x, edge[0].y, 10, 0, Math.PI * 2);
+				ctx.closePath();				
 				ctx.stroke();
 			}
 		}

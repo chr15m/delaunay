@@ -36,6 +36,17 @@ function DelaunayTriangle(a, b, c) {
 	}
 }
 
+function DelaunayException(message, data) {
+	this.message = message;
+	if (data) {
+		this.data = data;
+	}
+	
+	this.toString = function() {
+		return "DelaunayException: " + this.message;
+	}
+}
+
 function delaunay_dedup(edges) {
 	var j = edges.length,
 			a, b, i, m, n;
@@ -323,6 +334,11 @@ function get_point_in_line_on_side(edge, line, ls) {
 	}
 }
 
+// get the distance between two vertices
+function _delaunay_distance(v1, v2) {
+	return Math.sqrt(Math.pow(v2.x - v1.x, 2) + Math.pow(v2.y - v1.y), 2);
+}
+
 /****************************************
 	constrain the triangulated mesh to a set of edges the user specifies.
 
@@ -335,8 +351,56 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 	if (!triangles) {
 		triangles = delaunay_triangulate(vertices);
 	}
+	// first find any places where an edge touches a point and split the edge there
+	var del_edges = [];
+	var add_edges = [];
+	for (var e=0; e<constrained_edges.length; e++) {
+		var edge = constrained_edges[e];
+		// test each vertex against this edge
+		for (var v=0; v<vertices.length; v++) {
+			// if the vertex is touching the edge
+			if (vertices[v] != edge[0] && vertices[v] != edge[1] && line_side(edge, vertices[v]) == 0) {
+				// add two new edges in the place of the old one
+				add_edges.push([edge[0],vertices[v]]);
+				add_edges.push([vertices[v], edge[1]]);
+				// flag the old one for removal
+				del_edges.push(edge);
+			}
+		}
+	}
+	if (del_edges.length) {
+		console.log("Split edges:")
+		console.log(del_edges);
+		console.log(add_edges);
+	}
+	// remove any old split edges
+	for (var d=0; d<del_edges.length; d++) {
+		constrained_edges.splice(constrained_edges.indexOf(del_edges[d]), 1);
+	}
+	// add any new edges
+	for (var d=0; d<add_edges.length; d++) {
+		constrained_edges.push(add_edges[d]);
+	}
+	// test each edge against each other edge to see if two edges intersect eachother (illegal)
+	for (var e=0; e<constrained_edges.length; e++) {
+		for (var eo=0; eo<constrained_edges.length; eo++) {
+			if (e != eo && constrained_edges[e].length == 2 && constrained_edges[eo].length == 2) {
+				if (lines_intersect(constrained_edges[e][0], constrained_edges[e][1], constrained_edges[eo][0], constrained_edges[eo][1])) {
+					throw new DelaunayException("Two edges intersect eachother.", {"edges": [constrained_edges[e], constrained_edges[eo]]});
+				}
+				if (
+					(constrained_edges[e][0] == constrained_edges[eo][0] && constrained_edges[e][1] == constrained_edges[eo][1]) ||
+					(constrained_edges[e][0] == constrained_edges[eo][1] && constrained_edges[e][1] == constrained_edges[eo][0])) {
+					throw new DelaunayException("Two edges are the same edge.", {"edge": constrained_edges[e]});
+				}
+			}
+		}
+	}
 	// make a map of points to triangles
 	make_point_map(triangles);
+	// list of triangles we want to remove from the CDT
+	remove_triangles = [];	
+
 	// loop through the edge constraints we were passed
 	for (var e=0; e<constrained_edges.length; e++) {
 		// TODO: check if the line we are looking for is already and edge in our CDT?
@@ -344,6 +408,11 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 		var edge_map = make_edge_map(triangles);
 		// the current edge (two points)
 		var edge = constrained_edges[e];
+		
+		// check the edge is valid
+		if (_delaunay_distance(edge[0], edge[1]) == 0) {
+			throw new DelaunayException("Zero length edge constraint found.", {"edge": edge});
+		}
 		
 		// the start triangle
 		var t = null;
@@ -369,12 +438,10 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 		// the start vertex
 		var v = edge[0];
 		
-		// list of triangles we want to remove from the CDT
-		remove_triangles = [];
-		
 		// main part of the algorithm
 		var count = 100;
-		while (!vertex_in_triangle(edge[1], t) && count) {
+		// t can sometimes be null at start with a short edge that already exists
+		while (t && !vertex_in_triangle(edge[1], t) && count) {
 			count--;
 			t.edge_conflict = true;
 			var opposed = opposed_triangle(edge_map, t, v);
@@ -382,7 +449,7 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 			var t_seq = opposed.t;
 			var v_seq = opposed.v;
 			var ls = line_side(edge, v_seq);
-			console.log(ls);
+			console.log(ls, edge[1], v_seq);
 			//If vseq above the edge ab then
 			if (ls < 0) {
 				// AddList(PU, vseq)
@@ -397,11 +464,14 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 				v = get_point_in_line_on_side(opposed.e, edge, ls);
 			//Else vseq on the edge ab
 			} else {
-				// InsertEdgeCDT(T, vseq b)
-				// a:=vseq
-				// break
-				// TODO: handle this correctly (recursively? is that what the Vid Domiter paper is getting at?)
-				console.log("Argh, an edge constraint contained a point.");
+				if (edge[1] != v_seq) {
+					// should never get here as all edges with points in them should have been split previously
+					throw new DelaunayException("Point found inside an edge.", {"edge": edge, "point": v_seq});
+					// InsertEdgeCDT(T, vseq b)
+					// a:=vseq
+					// break
+					
+				}
 			}
 			//EndIf
 			//Remove t from CDT
@@ -416,27 +486,26 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 			console.log("Edge removal algorithm overflow!");
 		}
 		
-		// do the actual removals
-		for (var t=0; t<remove_triangles.length; t++) {
-			var idx = triangles.indexOf(remove_triangles[t]);
-			if (idx >= 0) {
-				triangles.splice(idx, 1);
-			}
-		}
 		//triangluate_polygon(poly_u, edge, triangles);
 		//triangluate_polygon(poly_l, edge, triangles);
-		
-		/*for (var p=0; p<edges[e].length; p++) {
-			var pt = edges[e][p];
-			for (var t=0; t<pt.delaunay_triangles.length; t++) {
-				var tri = pt.delaunay_triangles[t];
-				var pos = triangles.indexOf(tri);
-				if (pos != -1) {
-					triangles.splice(pos, 1);
+	}
+	
+	// remove all the triangles we got rid of
+	for (var t=0; t<remove_triangles.length; t++) {
+		var idx = triangles.indexOf(remove_triangles[t]);
+		if (idx >= 0) {
+			var triangle = triangles[idx];
+			for (var p=0; p<pointnames.length; p++) {
+				var pt = triangle[pointnames[p]];
+				var pidx = pt.delaunay_triangles.indexOf(triangle);
+				if (pidx >= 0) {
+					pt.delaunay_triangles.splice(pidx, 1);
 				}
 			}
-		}*/
+			triangles.splice(idx, 1);
+		}
 	}
+	
 	console.log(vertices);
 	console.log(constrained_edges);
 	console.log(triangles);
