@@ -441,7 +441,7 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 		
 		// if this edge is already part of our CDT then leave it in there
 		if (edge_map[edge_reference(edge[0], edge[1])]) {
-			break;
+			continue;
 		}
 		
 		// check the edge is valid
