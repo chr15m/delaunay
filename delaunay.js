@@ -317,7 +317,11 @@ function vertex_in_triangle(v, t) {
 }
 
 // check if two lines mad up of points p1->p2 and p3->p4 intersect eachother
-function lines_intersect(p1, p2, p3, p4) {
+function lines_intersect_2d(p1, p2, p3, p4) {
+	// first, sanity check that we aren't looking at actual connected points
+	if (p1 == p3 || p1 == p4 || p2 == p3 || p2 == 4) {
+		return false;
+	}
 	var x=((p1.x*p2.y-p1.y*p2.x)*(p3.x-p4.x)-(p1.x-p2.x)*(p3.x*p4.y-p3.y*p4.x))/((p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x));
 	var y=((p1.x*p2.y-p1.y*p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x*p4.y-p3.y*p4.x))/((p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x));
 	if (isNaN(x)||isNaN(y)) {
@@ -344,7 +348,7 @@ function lines_intersect(p1, p2, p3, p4) {
 			if (!(p3.y<=y&&y<=p4.y)) {return false;}
 		}
 	}
-	return true;
+	return [x, y];
 }
 
 // see which side of a line another point is (p1)
@@ -413,7 +417,7 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 	for (var e=0; e<constrained_edges.length; e++) {
 		for (var eo=0; eo<constrained_edges.length; eo++) {
 			if (e != eo && constrained_edges[e].length == 2 && constrained_edges[eo].length == 2) {
-				if (lines_intersect(constrained_edges[e][0], constrained_edges[e][1], constrained_edges[eo][0], constrained_edges[eo][1])) {
+				if (intersection = lines_intersect_2d(constrained_edges[e][0], constrained_edges[e][1], constrained_edges[eo][0], constrained_edges[eo][1])) {
 					throw new DelaunayException("Two edges intersect eachother.", {"edges": [constrained_edges[e], constrained_edges[eo]]});
 				}
 				if (
@@ -459,7 +463,7 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 				var p1 = edge[0].delaunay_triangles[ti][pointnames[p]];
 				var p2 = edge[0].delaunay_triangles[ti][pointnames[(p + 1) % pointnames.length]];
 				// if this side of this triangle intersects the edge we're processing we have found our triangle
-				if (!(edge[0] == p1 || edge[0] == p2) && lines_intersect(p1, p2, edge[0], edge[1])) {
+				if (!(edge[0] == p1 || edge[0] == p2) && lines_intersect_2d(p1, p2, edge[0], edge[1])) {
 					t = edge[0].delaunay_triangles[ti];
 					t.edge_conflict = true;
 				}
