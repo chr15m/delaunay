@@ -319,7 +319,7 @@ function vertex_in_triangle(v, t) {
 // check if two lines mad up of points p1->p2 and p3->p4 intersect eachother
 function lines_intersect_2d(p1, p2, p3, p4) {
 	// first, sanity check that we aren't looking at actual connected points
-	if (p1 == p3 || p1 == p4 || p2 == p3 || p2 == 4) {
+	if (p1 == p3 || p1 == p4 || p2 == p3 || p2 == p4) {
 		return false;
 	}
 	var x=((p1.x*p2.y-p1.y*p2.x)*(p3.x-p4.x)-(p1.x-p2.x)*(p3.x*p4.y-p3.y*p4.x))/((p1.x-p2.x)*(p3.y-p4.y)-(p1.y-p2.y)*(p3.x-p4.x));
