@@ -442,6 +442,7 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 		var edge_map = make_edge_map(triangles);
 		// the current edge (two points)
 		var edge = constrained_edges[e];
+		// console.log("EDGE:", constrained_edges[e]);
 		
 		// if this edge is already part of our CDT then leave it in there
 		if (edge_map[edge_reference(edge[0], edge[1])]) {
