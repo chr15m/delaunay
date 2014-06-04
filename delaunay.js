@@ -413,6 +413,7 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 	for (var d=0; d<add_edges.length; d++) {
 		constrained_edges.push(add_edges[d]);
 	}
+
 	// test each edge against each other edge to see if two edges intersect eachother (illegal)
 	for (var e=0; e<constrained_edges.length; e++) {
 		for (var eo=0; eo<constrained_edges.length; eo++) {
@@ -483,7 +484,11 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 		while (t && !vertex_in_triangle(edge[1], t)) {
 			t.edge_conflict = true;
 			var opposed = opposed_triangle(edge_map, t, v);
-			//console.log(opposed);
+			// console.log("Opposed:", opposed);
+			if (!opposed) {
+				// not sure if this is the correct behaviour but it seems to work!
+				break;
+			}
 			// first time through, add the initial points to the polygons
 			if (poly_u.length == 0 && poly_l.length == 0) {
 				for (var es=0; es<opposed.e.length; es++) {
