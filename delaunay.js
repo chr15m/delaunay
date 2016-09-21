@@ -400,8 +400,22 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 			}
 		}
 	}
+
+	// test each edge against each other edge to see if two edges intersect eachother (illegal)
+	for (var e=0; e<constrained_edges.length; e++) {
+		for (var eo=0; eo<constrained_edges.length; eo++) {
+			if (e != eo && constrained_edges[e].length == 2 && constrained_edges[eo].length == 2) {
+				if (
+					(constrained_edges[e][0] == constrained_edges[eo][0] && constrained_edges[e][1] == constrained_edges[eo][1]) ||
+					(constrained_edges[e][0] == constrained_edges[eo][1] && constrained_edges[e][1] == constrained_edges[eo][0])) {
+                                        del_edges.push(constrained_edges[e]);
+				}
+			}
+		}
+	}
+
 	if (del_edges.length) {
-		console.log("Split edges:")
+		console.log("Edge modifications:")
 		console.log(del_edges);
 		console.log(add_edges);
 	}
@@ -420,11 +434,6 @@ function delaunay_constrain(vertices, constrained_edges, triangles) {
 			if (e != eo && constrained_edges[e].length == 2 && constrained_edges[eo].length == 2) {
 				if (intersection = lines_intersect_2d(constrained_edges[e][0], constrained_edges[e][1], constrained_edges[eo][0], constrained_edges[eo][1])) {
 					throw new DelaunayException("Two edges intersect eachother.", {"edges": [constrained_edges[e], constrained_edges[eo]]});
-				}
-				if (
-					(constrained_edges[e][0] == constrained_edges[eo][0] && constrained_edges[e][1] == constrained_edges[eo][1]) ||
-					(constrained_edges[e][0] == constrained_edges[eo][1] && constrained_edges[e][1] == constrained_edges[eo][0])) {
-					throw new DelaunayException("Two edges are the same edge.", {"edge": constrained_edges[e]});
 				}
 			}
 		}
