@@ -316,7 +316,7 @@ function vertex_in_triangle(v, t) {
 	}
 }
 
-// check if two lines mad up of points p1->p2 and p3->p4 intersect eachother
+// check if two lines made up of points p1->p2 and p3->p4 intersect eachother
 function lines_intersect_2d(p1, p2, p3, p4) {
 	// first, sanity check that we aren't looking at actual connected points
 	if (p1 == p3 || p1 == p4 || p2 == p3 || p2 == p4) {
@@ -349,6 +349,15 @@ function lines_intersect_2d(p1, p2, p3, p4) {
 		}
 	}
 	return [x, y];
+}
+
+// check if two infinite lines including points p1->p2 and p3->p4 intersect eachother
+function lines_infinite_intersect_2d(p1, p2, p3, p4) {
+	var x=((p1[0]*p2[1]-p1[1]*p2[0])*(p3[0]-p4[0])-(p1[0]-p2[0])*(p3[0]*p4[1]-p3[1]*p4[0]))/((p1[0]-p2[0])*(p3[1]-p4[1])-(p1[1]-p2[1])*(p3[0]-p4[0]));
+	var y=((p1[0]*p2[1]-p1[1]*p2[0])*(p3[1]-p4[1])-(p1[1]-p2[1])*(p3[0]*p4[1]-p3[1]*p4[0]))/((p1[0]-p2[0])*(p3[1]-p4[1])-(p1[1]-p2[1])*(p3[0]-p4[0]));
+	if (isFinite(x) && isFinite(y)) {
+		return [x, y];
+	}
 }
 
 // see which side of a line another point is (p1)
